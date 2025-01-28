@@ -36,7 +36,7 @@ Hello, World!
 ### Output LLVM dialect
 
 ```bash
-./build/bin/hello-opt hello_world.mlir -emit=mlir-llvm
+./build/bin/hello-opt test/hello_world.mlir -emit=mlir-llvm
 ```
 
 Result:
@@ -60,7 +60,7 @@ module {
 ### Output LLVM IR
 
 ```bash
-./build/bin/hello-opt hello_world.mlir -emit=llvm
+./build/bin/hello-opt test/hello_world.mlir -emit=llvm
 ```
 
 Result:
@@ -93,7 +93,7 @@ attributes #0 = { nofree nounwind }
 ### Run JIT
 
 ```bash
-./build/bin/hello-opt hello_world.mlir
+./build/bin/hello-opt test/hello_world.mlir
 ```
 
 Result:

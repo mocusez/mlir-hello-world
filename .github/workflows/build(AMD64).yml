@@ -1,0 +1,38 @@
+name: Build(AMD64)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install LLVM 18
+        run: |
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 18
+          sudo apt-get install -y llvm-18 llvm-18-dev mlir-18-tools libmlir-18-dev clang-18 ninja-build
+
+      - name: Build with CMake
+        run: |
+          mkdir build
+          cmake -B build -DCMAKE_BUILD_TYPE:STRING=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE -DCMAKE_C_COMPILER:FILEPATH=/usr/bin/clang-18 -DCMAKE_CXX_COMPILER:FILEPATH=/usr/bin/clang++-18 --no-warn-unused-cli -G Ninja
+          cmake  --build build --config Debug --target helloworld
+          cmake  --build build --config Debug --target hello-opt
+
+      - name: Run Hello World test
+        run: |
+          ./build/bin/helloworld
+      
+      - name: Run MLIR file test
+        run: |
+          ./build/bin/hello-opt test/hello_world.mlir -emit=mlir-llvm
+          ./build/bin/hello-opt test/hello_world.mlir -emit=llvm
+          ./build/bin/hello-opt test/hello_world.mlir
