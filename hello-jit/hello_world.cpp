@@ -110,35 +110,47 @@ int main(int argc, char **argv) {
   auto funcType = builder.getFunctionType({}, {});
   auto func = builder.create<mlir::func::FuncOp>(builder.getUnknownLoc(), "main", funcType);
 
+  std::vector<mlir::Type> elementTypes;
+  elementTypes.push_back(builder.getI32Type());
+  elementTypes.push_back(builder.getI32Type());
+  elementTypes.push_back(builder.getI32Type());
+  StructType structType = StructType::get(elementTypes);
+  llvm::outs() << "MyStructType: " << structType << "\n";
+
   module->push_back(func);
   auto entryBlock = func.addEntryBlock();
   builder.setInsertionPointToStart(entryBlock);
 
+  std::vector<int32_t> values = {1, 2, 3};
+  auto valueAttr = builder.getI32ArrayAttr(values);
+  builder.create<hello::StructConstantOp>(builder.getUnknownLoc(), structType,
+                                            llvm::cast<mlir::ArrayAttr>(valueAttr));
   builder.create<hello::WorldOp>(builder.getUnknownLoc());
 
   builder.create<mlir::func::ReturnOp>(
       builder.getUnknownLoc()); 
 
-  if (emitAction == Action::DumpMLIR){
-    module->print(llvm::outs());
-    return 0;
-  }
+  module->print(llvm::outs());
+  // if (emitAction == Action::DumpMLIR){
+  //   module->print(llvm::outs());
+  //   return 0;
+  // }
 
-  // Add Pass for lowering to LLVM
-  mlir::PassManager passManager(&context);
-  passManager.addPass(hello::createLowerToLLVMPass());
+  // // Add Pass for lowering to LLVM
+  // mlir::PassManager passManager(&context);
+  // passManager.addPass(hello::createLowerToLLVMPass());
 
-  if (mlir::failed(passManager.run(*module))) {
-    return 4;
-  }
+  // if (mlir::failed(passManager.run(*module))) {
+  //   return 4;
+  // }
 
-  if (emitAction == Action::DumpMLIRLLVM){
-    module->print(llvm::outs());
-  } else if(emitAction == Action::DumpLLVMIR){
-    runJit(*module,true);
-  } else {
-    runJit(*module);
-  }
+  // if (emitAction == Action::DumpMLIRLLVM){
+  //   module->print(llvm::outs());
+  // } else if(emitAction == Action::DumpLLVMIR){
+  //   runJit(*module,true);
+  // } else {
+  //   runJit(*module);
+  // }
 
   return 0;
 }
