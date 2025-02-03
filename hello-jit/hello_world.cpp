@@ -111,9 +111,10 @@ int main(int argc, char **argv) {
   auto func = builder.create<mlir::func::FuncOp>(builder.getUnknownLoc(), "main", funcType);
 
   std::vector<mlir::Type> elementTypes;
-  elementTypes.push_back(builder.getI32Type());
-  elementTypes.push_back(builder.getI32Type());
-  elementTypes.push_back(builder.getI32Type());
+  auto dataType1 = mlir::RankedTensorType::get({3}, builder.getI64Type());
+  auto dataType2 = mlir::RankedTensorType::get({3}, builder.getF64Type());
+  elementTypes.push_back(dataType1);
+  elementTypes.push_back(dataType2);
   StructType structType = StructType::get(elementTypes);
   llvm::outs() << "MyStructType: " << structType << "\n";
 
@@ -121,10 +122,21 @@ int main(int argc, char **argv) {
   auto entryBlock = func.addEntryBlock();
   builder.setInsertionPointToStart(entryBlock);
 
-  std::vector<int32_t> values = {1, 2, 3};
-  auto valueAttr = builder.getI32ArrayAttr(values);
-  builder.create<hello::StructConstantOp>(builder.getUnknownLoc(), structType,
-                                            llvm::cast<mlir::ArrayAttr>(valueAttr));
+  // std::vector<int32_t> values = {1, 2, 3};
+  // auto valueAttr = builder.getI32ArrayAttr(values);
+  std::vector<int64_t> intValues = {1, 2, 3};
+  std::vector<double> floatValues = {1.1, 2.1, 3.1};
+  auto intAttr = mlir::DenseElementsAttr::get(
+      dataType1, 
+      llvm::ArrayRef<int64_t>(intValues)
+  );
+  auto floatAttr = mlir::DenseElementsAttr::get(
+      dataType2, 
+      llvm::ArrayRef<double>(floatValues)
+  );
+  std::vector<mlir::Attribute> values = {intAttr, floatAttr};
+  auto valueAttr = builder.getArrayAttr(values);
+  builder.create<hello::StructConstantOp>(builder.getUnknownLoc(), structType,valueAttr);
   builder.create<hello::WorldOp>(builder.getUnknownLoc());
 
   builder.create<mlir::func::ReturnOp>(
