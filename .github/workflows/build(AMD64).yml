@@ -13,17 +13,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install LLVM 18
+      - name: Install LLVM 20
         run: |
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
-          sudo ./llvm.sh 18
-          sudo apt-get install -y llvm-18 llvm-18-dev mlir-18-tools libmlir-18-dev clang-18 ninja-build
+          sudo ./llvm.sh 20
+          sudo apt-get install -y llvm-20 llvm-20-dev mlir-20-tools libmlir-20-dev clang-20 ninja-build
 
       - name: Build with CMake
         run: |
           mkdir build
-          cmake -B build -DCMAKE_BUILD_TYPE:STRING=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE -DCMAKE_C_COMPILER:FILEPATH=/usr/bin/clang-18 -DCMAKE_CXX_COMPILER:FILEPATH=/usr/bin/clang++-18 --no-warn-unused-cli -G Ninja
+          cmake -B build -DCMAKE_BUILD_TYPE:STRING=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE -DCMAKE_C_COMPILER:FILEPATH=/usr/bin/clang-20 -DCMAKE_CXX_COMPILER:FILEPATH=/usr/bin/clang++-20 --no-warn-unused-cli -G Ninja
           cmake  --build build --config Debug --target helloworld
           cmake  --build build --config Debug --target hello-opt
 
