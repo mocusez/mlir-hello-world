@@ -16,6 +16,7 @@ def Hello_Dialect : Dialect {
     }];
     let cppNamespace = "::hello";
     // let hasConstantMaterializer = 1;
+    let useDefaultTypePrinterParser = 1;
 }
 
 //===----------------------------------------------------------------------===//
@@ -24,5 +25,9 @@ def Hello_Dialect : Dialect {
 
 class Hello_Op<string mnemonic, list<Trait> traits = []> :
         Op<Hello_Dialect, mnemonic, traits>;
+
+def DictType :
+    DialectType<Hello_Dialect, CPred<"::llvm::isa<DictType>($_self)">,
+                "Hello dict type">;
 
 #endif // HELLO_DIALECT

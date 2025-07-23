@@ -36,3 +36,9 @@ jobs:
           ./build/bin/hello-opt test/hello_world.mlir -emit=mlir-llvm
           ./build/bin/hello-opt test/hello_world.mlir -emit=llvm
           ./build/bin/hello-opt test/hello_world.mlir
+
+      - name: Run Hello Dict test
+        run: |
+          cd test/dict
+          chmod +x run.sh
+          ./run.sh
