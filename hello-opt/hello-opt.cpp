@@ -10,17 +10,19 @@
 #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Export.h"
 
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/StringRef.h"
 #include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IRReader/IRReader.h"
+#include "llvm/Linker/Linker.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include "Hello/HelloDialect.h"
 #include "Hello/HelloPasses.h"
@@ -42,8 +44,7 @@ static cl::opt<enum Action> emitAction(
     "emit", cl::desc("Select the kind of output desired"),
     cl::values(clEnumValN(DumpMLIRLLVM, "mlir-llvm",
                           "output the MLIR dump after llvm lowering")),
-    cl::values(clEnumValN(DumpLLVMIR, "llvm", "output the LLVM IR dump"))
-);
+    cl::values(clEnumValN(DumpLLVMIR, "llvm", "output the LLVM IR dump")));
 
 int dumpLLVMIR(mlir::ModuleOp module) {
   mlir::registerBuiltinDialectTranslation(*module->getContext());
@@ -74,7 +75,8 @@ int dumpLLVMIR(mlir::ModuleOp module) {
                                                         tmOrError.get().get());
 
   // Optionally run an optimization pipeline over the llvm module.
-  auto optPipeline = mlir::makeOptimizingTransformer(0, 0, nullptr);
+  auto optPipeline =
+      mlir::makeOptimizingTransformer(3, 0, tmOrError.get().get());
   if (auto err = optPipeline(llvmModule.get())) {
     llvm::errs() << "Failed to optimize LLVM IR " << err << "\n";
     return -1;
@@ -122,7 +124,7 @@ int loadAndProcessMLIR(mlir::MLIRContext &context,
   return 0;
 }
 
-int runJit(mlir::ModuleOp module,bool dumpIr=false) {
+int runJit(mlir::ModuleOp module, bool dumpIr = false) {
   // Register the translation to LLVM IR with the MLIR context.
   mlir::registerBuiltinDialectTranslation(*module->getContext());
   mlir::registerLLVMDialectTranslation(*module->getContext());
@@ -133,6 +135,17 @@ int runJit(mlir::ModuleOp module,bool dumpIr=false) {
   if (!llvmModule) {
     llvm::errs() << "Failed to emit LLVM IR\n";
     return -1;
+  }
+
+  llvm::SMDiagnostic Err;
+  auto libModule = llvm::parseIRFile("dictlib.ll", Err, llvmContext);
+  if (libModule) {
+    if (llvm::Linker::linkModules(*llvmModule, std::move(libModule))) {
+      llvm::errs() << "Failed to link modules\n";
+      return -1;
+    }
+  } else {
+    llvm::errs() << "Ignore dictlib.ll: " << Err.getMessage() << "\n";
   }
 
   // Initialize LLVM targets.
@@ -155,19 +168,21 @@ int runJit(mlir::ModuleOp module,bool dumpIr=false) {
                                                         tmOrError.get().get());
 
   /// Optionally run an optimization pipeline over the llvm module.
-  auto optPipeline = mlir::makeOptimizingTransformer(3 , /*sizeLevel=*/0,
-      /*targetMachine=*/nullptr);
+  auto optPipeline =
+      mlir::makeOptimizingTransformer(3, /*sizeLevel=*/0,
+                                      /*targetMachine=*/tmOrError.get().get());
   if (auto err = optPipeline(llvmModule.get())) {
     llvm::errs() << "Failed to optimize LLVM IR " << err << "\n";
     return -1;
   }
 
-  if(dumpIr){
+  if (dumpIr) {
     llvm::outs() << *llvmModule << "\n";
   } else {
     llvm::ExitOnError ExitOnErr;
     auto J = ExitOnErr(llvm::orc::LLJITBuilder().create());
-    ExitOnErr(J->addIRModule(llvm::orc::ThreadSafeModule(std::move(llvmModule), std::make_unique<llvm::LLVMContext>())));
+    ExitOnErr(J->addIRModule(llvm::orc::ThreadSafeModule(
+        std::move(llvmModule), std::make_unique<llvm::LLVMContext>())));
     auto MainSymbol = ExitOnErr(J->lookup("main"));
     auto *main1 = MainSymbol.toPtr<int()>();
     main1();
@@ -189,10 +204,10 @@ int main(int argc, char **argv) {
     return error;
   }
 
-  if (emitAction == Action::DumpMLIRLLVM){
+  if (emitAction == Action::DumpMLIRLLVM) {
     module->print(llvm::outs());
-  } else if(emitAction == Action::DumpLLVMIR){
-    runJit(*module,true);
+  } else if (emitAction == Action::DumpLLVMIR) {
+    runJit(*module, true);
   } else {
     runJit(*module);
   }
