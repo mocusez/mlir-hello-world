@@ -124,7 +124,7 @@ int loadAndProcessMLIR(mlir::MLIRContext &context,
   return 0;
 }
 
-int runJit(mlir::ModuleOp module, bool dumpIr = false) {
+int runJit(mlir::ModuleOp module) {
   // Register the translation to LLVM IR with the MLIR context.
   mlir::registerBuiltinDialectTranslation(*module->getContext());
   mlir::registerLLVMDialectTranslation(*module->getContext());
@@ -176,17 +176,7 @@ int runJit(mlir::ModuleOp module, bool dumpIr = false) {
     return -1;
   }
 
-  if (dumpIr) {
-    llvm::outs() << *llvmModule << "\n";
-  } else {
-    llvm::ExitOnError ExitOnErr;
-    auto J = ExitOnErr(llvm::orc::LLJITBuilder().create());
-    ExitOnErr(J->addIRModule(llvm::orc::ThreadSafeModule(
-        std::move(llvmModule), std::make_unique<llvm::LLVMContext>())));
-    auto MainSymbol = ExitOnErr(J->lookup("main"));
-    auto *main1 = MainSymbol.toPtr<int()>();
-    main1();
-  }
+  llvm::outs() << *llvmModule << "\n";
   return 0;
 }
 
@@ -206,8 +196,6 @@ int main(int argc, char **argv) {
 
   if (emitAction == Action::DumpMLIRLLVM) {
     module->print(llvm::outs());
-  } else if (emitAction == Action::DumpLLVMIR) {
-    runJit(*module, true);
   } else {
     runJit(*module);
   }
