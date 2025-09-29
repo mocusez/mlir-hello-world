@@ -12,7 +12,7 @@ Setup CMake MLIR environment on Debian-sid with MLIR Environment -> [CMake_MLIR_
 
 ```
 mkdir build
-cmake -B build -DCMAKE_BUILD_TYPE:STRING=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE -DCMAKE_C_COMPILER:FILEPATH=/usr/bin/clang-18 -DCMAKE_CXX_COMPILER:FILEPATH=/usr/bin/clang++-18 --no-warn-unused-cli -G Ninja
+cmake -B build -DCMAKE_BUILD_TYPE:STRING=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE -DCMAKE_C_COMPILER:FILEPATH=/usr/bin/clang-20 -DCMAKE_CXX_COMPILER:FILEPATH=/usr/bin/clang++-20 --no-warn-unused-cli -G Ninja
 cmake  --build build --config Debug --target helloworld
 cmake  --build build --config Debug --target hello-opt
 ```
@@ -88,18 +88,6 @@ attributes #0 = { nofree nounwind }
 !llvm.module.flags = !{!0}
 
 !0 = !{i32 2, !"Debug Info Version", i32 3}
-```
-
-### Run JIT
-
-```bash
-./build/bin/hello-opt test/hello_world.mlir
-```
-
-Result:
-
-```
-Hello, World! 
 ```
 
 
