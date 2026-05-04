@@ -230,4 +230,10 @@ Temporary Items
 build/*
 .vscode
 
-rubbish
+rubbish# pixi environments
+.pixi/*
+!.pixi/config.toml
+
+.omc
+
+.cache
