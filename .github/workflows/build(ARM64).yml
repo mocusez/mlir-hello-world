@@ -26,7 +26,10 @@ jobs:
           cmake --build build
 
       - name: Run Hello World test
-        run: ./build/bin/helloworld
+        run: |
+          output=$(./build/bin/helloworld)
+          echo "$output"
+          echo "$output" | grep -q "Hello, World!"
 
       - name: Run MLIR file test
         run: |
