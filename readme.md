@@ -2,6 +2,16 @@
 
 Print "Hello World!" from an MLIR Program.
 
+## Features
+
+- Custom out-of-tree `hello` dialect with TableGen-defined operations
+- `hello.world` op — prints "Hello, World!" via printf
+- `hello.dict` type — dictionary with `create`, `put`, `get`, `delete`, `free` operations
+- Lowering pass from `hello` dialect to LLVM dialect
+- JIT compiler (`helloworld`) — builds and executes MLIR programs in-memory
+- Opt tool (`hello-opt`) — reads `.mlir` files and emits MLIR LLVM dialect or LLVM IR
+- Cross-platform support: macOS (arm64/x86_64), Linux (x86_64/aarch64)
+
 ## How to use
 
 ```bash
