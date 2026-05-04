@@ -1,19 +1,15 @@
 #include "mlir/ExecutionEngine/ExecutionEngine.h"
 #include "mlir/ExecutionEngine/OptUtils.h"
 #include "mlir/IR/MLIRContext.h"
-#include "mlir/InitAllDialects.h"
-#include "mlir/InitAllPasses.h"
 #include "mlir/Parser/Parser.h"
 #include "mlir/Pass/PassManager.h"
-#include "mlir/Support/FileUtilities.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Export.h"
 
-#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
-#include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Linker/Linker.h"
@@ -185,9 +181,12 @@ int main(int argc, char **argv) {
   mlir::registerPassManagerCLOptions();
 
   cl::ParseCommandLineOptions(argc, argv, "Hello compiler\n");
-  mlir::MLIRContext context;
-  context.getOrLoadDialect<hello::HelloDialect>();
-  context.getOrLoadDialect<mlir::func::FuncDialect>();
+  mlir::DialectRegistry registry;
+  registry.insert<
+      mlir::func::FuncDialect,
+      hello::HelloDialect>();
+
+  mlir::MLIRContext context(registry);
 
   mlir::OwningOpRef<mlir::ModuleOp> module;
   if (int error = loadAndProcessMLIR(context, module)) {

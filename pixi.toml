@@ -1,0 +1,21 @@
+[workspace]
+authors = ["Mocus Zhang <mocusez@outlook.com>"]
+channels = ["conda-forge"]
+name = "mlir-hello-world"
+platforms = ["osx-arm64", "osx-64", "linux-64", "linux-aarch64"]
+version = "0.1.0"
+
+[dependencies]
+mlir = ">=22.1.4,<23"
+cmake = ">=3.20"
+ninja = ">=1.11"
+
+[tasks]
+configure = { cmd = "cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G Ninja" }
+build = { cmd = "cmake --build build", depends-on = ["configure"] }
+build-jit = { cmd = "cmake --build build --target helloworld", depends-on = ["configure"] }
+build-opt = { cmd = "cmake --build build --target hello-opt", depends-on = ["configure"] }
+clean = { cmd = "rm -rf build" }
+helloworld = { cmd = "./build/bin/helloworld", depends-on = ["build-jit"] }
+run-opt-mlir = { cmd = "./build/bin/hello-opt test/hello_world.mlir -emit=mlir-llvm", depends-on = ["build-opt"] }
+run-opt-llvm = { cmd = "./build/bin/hello-opt test/hello_world.mlir -emit=llvm", depends-on = ["build-opt"] }

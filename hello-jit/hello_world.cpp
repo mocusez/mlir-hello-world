@@ -1,26 +1,18 @@
 #include "mlir/ExecutionEngine/ExecutionEngine.h"
 #include "mlir/ExecutionEngine/OptUtils.h"
 #include "mlir/IR/MLIRContext.h"
-#include "mlir/InitAllDialects.h"
-#include "mlir/InitAllPasses.h"
-#include "mlir/Parser/Parser.h"
 #include "mlir/Pass/PassManager.h"
-#include "mlir/Support/FileUtilities.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Export.h"
 
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/ADT/StringRef.h"
-#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
-#include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Error.h"
-#include "llvm/Support/MemoryBuffer.h"
-#include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include "Hello/HelloDialect.h"
 #include "Hello/HelloPasses.h"
@@ -99,24 +91,28 @@ int runJit(mlir::ModuleOp module,bool dumpIr=false) {
 int main(int argc, char **argv) {
   cl::ParseCommandLineOptions(argc, argv, "Hello compiler\n");
   // Init
-  mlir::MLIRContext context;
-  context.getOrLoadDialect<hello::HelloDialect>();
-  context.getOrLoadDialect<mlir::func::FuncDialect>();
+  mlir::DialectRegistry registry;
+  registry.insert<
+      mlir::func::FuncDialect,
+      hello::HelloDialect>();
+
+  mlir::MLIRContext context(registry);
+  context.loadDialect<mlir::func::FuncDialect, hello::HelloDialect>();
 
   mlir::OpBuilder builder(&context);
   mlir::OwningOpRef<mlir::ModuleOp> module = mlir::ModuleOp::create(builder.getUnknownLoc());
   
   // Generate Code Block
   auto funcType = builder.getFunctionType({}, {});
-  auto func = builder.create<mlir::func::FuncOp>(builder.getUnknownLoc(), "main", funcType);
+  auto func = mlir::func::FuncOp::create(builder, builder.getUnknownLoc(), "main", funcType);
 
   module->push_back(func);
   auto entryBlock = func.addEntryBlock();
   builder.setInsertionPointToStart(entryBlock);
 
-  builder.create<hello::WorldOp>(builder.getUnknownLoc());
+  hello::WorldOp::create(builder, builder.getUnknownLoc());
 
-  builder.create<mlir::func::ReturnOp>(
+  mlir::func::ReturnOp::create(builder,
       builder.getUnknownLoc()); 
 
   if (emitAction == Action::DumpMLIR){

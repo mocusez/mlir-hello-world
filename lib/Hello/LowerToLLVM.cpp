@@ -42,7 +42,7 @@ public:
         loc, rewriter, "hello_word_string",
         mlir::StringRef("Hello, World! \n\0", 16), parentModule);
 
-    rewriter.create<mlir::LLVM::CallOp>(loc, getPrintfType(context), printfRef,
+    mlir::LLVM::CallOp::create(rewriter,loc, getPrintfType(context), printfRef,
                                         helloWorld);
     rewriter.eraseOp(op);
     return mlir::success();
@@ -67,7 +67,7 @@ private:
 
     mlir::PatternRewriter::InsertionGuard insertGuard(rewriter);
     rewriter.setInsertionPointToStart(module.getBody());
-    rewriter.create<mlir::LLVM::LLVMFuncOp>(module.getLoc(), "printf",
+    mlir::LLVM::LLVMFuncOp::create(rewriter,module.getLoc(), "printf",
                                             getPrintfType(context));
     return mlir::SymbolRefAttr::get(context, "printf");
   }
@@ -84,19 +84,19 @@ private:
       builder.setInsertionPointToStart(module.getBody());
       auto type = mlir::LLVM::LLVMArrayType::get(
           mlir::IntegerType::get(builder.getContext(), 8), value.size());
-      global = builder.create<mlir::LLVM::GlobalOp>(
+      global = mlir::LLVM::GlobalOp::create(builder,
           loc, type, /*isConstant=*/true, mlir::LLVM::Linkage::Internal, name,
           builder.getStringAttr(value));
     }
 
     // Get the pointer to the first character in the global string.
     mlir::Value globalPtr =
-        builder.create<mlir::LLVM::AddressOfOp>(loc, global);
-    mlir::Value cst0 = builder.create<mlir::LLVM::ConstantOp>(
+        mlir::LLVM::AddressOfOp::create(builder,loc, global);
+    mlir::Value cst0 = mlir::LLVM::ConstantOp::create(builder,
         loc, mlir::IntegerType::get(builder.getContext(), 64),
         builder.getIntegerAttr(builder.getIndexType(), 0));
 
-    return builder.create<mlir::LLVM::GEPOp>(
+    return mlir::LLVM::GEPOp::create(builder,
         loc, mlir::LLVM::LLVMPointerType::get(builder.getContext()),
         global.getType(), globalPtr, mlir::ArrayRef<mlir::Value>({cst0, cst0}));
   }
@@ -123,7 +123,7 @@ public:
     mlir::ModuleOp module = op->getParentOfType<mlir::ModuleOp>();
     auto createMapRef = getOrInsertCreateMap(rewriter, module);
 
-    auto callOp = rewriter.create<mlir::LLVM::CallOp>(
+    auto callOp = mlir::LLVM::CallOp::create(rewriter,
         loc, resultType, createMapRef, mlir::ValueRange{});
 
     rewriter.replaceOp(op, callOp.getResult());
@@ -140,12 +140,12 @@ private:
     // Create function type: () -> !llvm.ptr
     auto resultType = mlir::LLVM::LLVMPointerType::get(context);
     auto fnType =
-        mlir::LLVM::LLVMFunctionType::get(resultType, std::nullopt, false);
+      mlir::LLVM::LLVMFunctionType::get(resultType, {}, false);
 
     // Insert function declaration
     mlir::PatternRewriter::InsertionGuard insertGuard(rewriter);
     rewriter.setInsertionPointToStart(module.getBody());
-    rewriter.create<mlir::LLVM::LLVMFuncOp>(module.getLoc(), "create_map",
+    mlir::LLVM::LLVMFuncOp::create(rewriter,module.getLoc(), "create_map",
                                             fnType);
 
     return mlir::SymbolRefAttr::get(context, "create_map");
@@ -171,7 +171,7 @@ public:
     auto freeMapRef = getOrInsertFreeMap(rewriter, parentModule);
 
     // Call free_map(dict)
-    rewriter.create<mlir::LLVM::CallOp>(loc,
+    mlir::LLVM::CallOp::create(rewriter,loc,
                                         mlir::TypeRange{}, // void return type
                                         freeMapRef, mlir::ValueRange{dict});
 
@@ -196,7 +196,7 @@ private:
     // Insert function declaration
     mlir::PatternRewriter::InsertionGuard insertGuard(rewriter);
     rewriter.setInsertionPointToStart(module.getBody());
-    rewriter.create<mlir::LLVM::LLVMFuncOp>(module.getLoc(), "free_map",
+    mlir::LLVM::LLVMFuncOp::create(rewriter,module.getLoc(), "free_map",
                                             fnType);
 
     return mlir::SymbolRefAttr::get(context, "free_map");
@@ -234,14 +234,13 @@ public:
     // Call get function: get(map, key)
     auto i32PtrType = mlir::LLVM::LLVMPointerType::get(rewriter.getContext());
     auto resultPtr =
-        rewriter
-            .create<mlir::LLVM::CallOp>(loc, i32PtrType, getRef,
+        mlir::LLVM::CallOp::create(rewriter, loc, i32PtrType, getRef,
                                         mlir::ValueRange{dict, keyGlobal})
             .getResult();
 
     // Load the value from the pointer
     auto i32Type = mlir::IntegerType::get(rewriter.getContext(), 32);
-    auto result = rewriter.create<mlir::LLVM::LoadOp>(loc, i32Type, resultPtr);
+    auto result = mlir::LLVM::LoadOp::create(rewriter,loc, i32Type, resultPtr);
 
     // Replace the original op with the loaded value
     rewriter.replaceOp(op, result);
@@ -264,7 +263,7 @@ private:
     // Insert function declaration
     mlir::PatternRewriter::InsertionGuard insertGuard(rewriter);
     rewriter.setInsertionPointToStart(module.getBody());
-    rewriter.create<mlir::LLVM::LLVMFuncOp>(module.getLoc(), "get", fnType);
+    mlir::LLVM::LLVMFuncOp::create(rewriter,module.getLoc(), "get", fnType);
 
     return mlir::SymbolRefAttr::get(context, "get");
   }
@@ -284,19 +283,19 @@ private:
       auto type = mlir::LLVM::LLVMArrayType::get(
           mlir::IntegerType::get(builder.getContext(), 8),
           value.size() + 1); // +1 for null terminator
-      global = builder.create<mlir::LLVM::GlobalOp>(
+      global = mlir::LLVM::GlobalOp::create(builder,
           loc, type, /*isConstant=*/true, mlir::LLVM::Linkage::Internal, name,
           builder.getStringAttr(value.str() + '\0'));
     }
 
     // Get the pointer to the first character in the global string.
     mlir::Value globalPtr =
-        builder.create<mlir::LLVM::AddressOfOp>(loc, global);
-    mlir::Value cst0 = builder.create<mlir::LLVM::ConstantOp>(
+        mlir::LLVM::AddressOfOp::create(builder,loc, global);
+    mlir::Value cst0 = mlir::LLVM::ConstantOp::create(builder,
         loc, mlir::IntegerType::get(builder.getContext(), 64),
         builder.getIntegerAttr(builder.getIndexType(), 0));
 
-    return builder.create<mlir::LLVM::GEPOp>(
+    return mlir::LLVM::GEPOp::create(builder,
         loc, mlir::LLVM::LLVMPointerType::get(builder.getContext()),
         global.getType(), globalPtr, mlir::ArrayRef<mlir::Value>({cst0, cst0}));
   }
@@ -326,7 +325,7 @@ public:
                                 op->getParentOfType<mlir::ModuleOp>());
 
     // Create the integer constant for the value
-    auto valueConst = rewriter.create<mlir::LLVM::ConstantOp>(
+    auto valueConst = mlir::LLVM::ConstantOp::create(rewriter,
         loc, mlir::IntegerType::get(rewriter.getContext(), 32),
         rewriter.getI32IntegerAttr(valueAttr));
 
@@ -337,7 +336,7 @@ public:
     auto putRef = getOrInsertPut(rewriter, parentModule);
 
     // Call put function: put(map, key, value)
-    rewriter.create<mlir::LLVM::CallOp>(
+    mlir::LLVM::CallOp::create(rewriter,
         loc, mlir::TypeRange{}, // void return type
         putRef, mlir::ValueRange{dict, keyGlobal, valueConst});
 
@@ -366,7 +365,7 @@ private:
     // Insert function declaration
     mlir::PatternRewriter::InsertionGuard insertGuard(rewriter);
     rewriter.setInsertionPointToStart(module.getBody());
-    rewriter.create<mlir::LLVM::LLVMFuncOp>(module.getLoc(), "put", fnType);
+    mlir::LLVM::LLVMFuncOp::create(rewriter,module.getLoc(), "put", fnType);
 
     return mlir::SymbolRefAttr::get(context, "put");
   }
@@ -385,19 +384,19 @@ private:
       auto type = mlir::LLVM::LLVMArrayType::get(
           mlir::IntegerType::get(builder.getContext(), 8),
           value.size() + 1); // +1 for null terminator
-      global = builder.create<mlir::LLVM::GlobalOp>(
+      global = mlir::LLVM::GlobalOp::create(builder,
           loc, type, /*isConstant=*/true, mlir::LLVM::Linkage::Internal, name,
           builder.getStringAttr(value.str() + '\0'));
     }
 
     // Get the pointer to the first character in the global string.
     mlir::Value globalPtr =
-        builder.create<mlir::LLVM::AddressOfOp>(loc, global);
-    mlir::Value cst0 = builder.create<mlir::LLVM::ConstantOp>(
+        mlir::LLVM::AddressOfOp::create(builder,loc, global);
+    mlir::Value cst0 = mlir::LLVM::ConstantOp::create(builder,
         loc, mlir::IntegerType::get(builder.getContext(), 64),
         builder.getIntegerAttr(builder.getIndexType(), 0));
 
-    return builder.create<mlir::LLVM::GEPOp>(
+    return mlir::LLVM::GEPOp::create(builder,
         loc, mlir::LLVM::LLVMPointerType::get(builder.getContext()),
         global.getType(), globalPtr, mlir::ArrayRef<mlir::Value>({cst0, cst0}));
   }
@@ -433,7 +432,7 @@ public:
     auto deleteRef = getOrInsertDelete(rewriter, parentModule);
 
     // Call delete function: delete(map, key)
-    rewriter.create<mlir::LLVM::CallOp>(
+    mlir::LLVM::CallOp::create(rewriter,
         loc, mlir::TypeRange{}, // void return type
         deleteRef, mlir::ValueRange{dict, keyGlobal});
 
@@ -460,7 +459,7 @@ private:
     // Insert function declaration
     mlir::PatternRewriter::InsertionGuard insertGuard(rewriter);
     rewriter.setInsertionPointToStart(module.getBody());
-    rewriter.create<mlir::LLVM::LLVMFuncOp>(module.getLoc(), "delete", fnType);
+    mlir::LLVM::LLVMFuncOp::create(rewriter,module.getLoc(), "delete", fnType);
 
     return mlir::SymbolRefAttr::get(context, "delete");
   }
@@ -479,18 +478,18 @@ private:
       builder.setInsertionPointToStart(module.getBody());
       auto type = mlir::LLVM::LLVMArrayType::get(
           mlir::IntegerType::get(builder.getContext(), 8), value.size() + 1);
-      global = builder.create<mlir::LLVM::GlobalOp>(
+      global = mlir::LLVM::GlobalOp::create(builder,
           loc, type, /*isConstant=*/true, mlir::LLVM::Linkage::Internal, name,
           builder.getStringAttr(value.str() + '\0'));
     }
 
     mlir::Value globalPtr =
-        builder.create<mlir::LLVM::AddressOfOp>(loc, global);
-    mlir::Value cst0 = builder.create<mlir::LLVM::ConstantOp>(
+        mlir::LLVM::AddressOfOp::create(builder,loc, global);
+    mlir::Value cst0 = mlir::LLVM::ConstantOp::create(builder,
         loc, mlir::IntegerType::get(builder.getContext(), 64),
         builder.getIntegerAttr(builder.getIndexType(), 0));
 
-    return builder.create<mlir::LLVM::GEPOp>(
+    return mlir::LLVM::GEPOp::create(builder,
         loc, mlir::LLVM::LLVMPointerType::get(builder.getContext()),
         global.getType(), globalPtr, mlir::ArrayRef<mlir::Value>({cst0, cst0}));
   }
@@ -505,8 +504,7 @@ class HelloToLLVMLoweringPass
 public:
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(HelloToLLVMLoweringPass)
   void getDependentDialects(mlir::DialectRegistry &registry) const override {
-    registry.insert<mlir::LLVM::LLVMDialect, mlir::scf::SCFDialect,
-                    mlir::cf::ControlFlowDialect>();
+    registry.insert<mlir::LLVM::LLVMDialect>();
   }
 
   void runOnOperation() final;

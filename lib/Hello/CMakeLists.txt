@@ -10,5 +10,5 @@ add_mlir_dialect_library(MLIRHello
         MLIRHelloOpsIncGen
 
 	LINK_LIBS PUBLIC
-	MLIRIR
+	MLIR
 	)
