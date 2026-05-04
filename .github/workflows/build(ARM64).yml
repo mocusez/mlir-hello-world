@@ -11,26 +11,23 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Install LLVM 20
+      - name: Install LLVM 22
         run: |
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
-          sudo ./llvm.sh 20
-          sudo apt-get install -y llvm-20 llvm-20-dev mlir-20-tools libmlir-20-dev clang-20 ninja-build
+          sudo ./llvm.sh 22
+          sudo apt-get install -y llvm-22 llvm-22-dev mlir-22-tools libmlir-22-dev clang-22 ninja-build
 
       - name: Build with CMake
         run: |
-          mkdir build
-          cmake -B build -DCMAKE_BUILD_TYPE:STRING=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE -DCMAKE_C_COMPILER:FILEPATH=/usr/bin/clang-20 -DCMAKE_CXX_COMPILER:FILEPATH=/usr/bin/clang++-20 --no-warn-unused-cli -G Ninja
-          cmake  --build build --config Debug --target helloworld
-          cmake  --build build --config Debug --target hello-opt
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_PREFIX_PATH=/usr/lib/llvm-22 -DCMAKE_C_COMPILER=/usr/bin/clang-22 -DCMAKE_CXX_COMPILER=/usr/bin/clang++-22 -G Ninja
+          cmake --build build
 
       - name: Run Hello World test
-        run: |
-          ./build/bin/helloworld
-      
+        run: ./build/bin/helloworld
+
       - name: Run MLIR file test
         run: |
           ./build/bin/hello-opt test/hello_world.mlir -emit=mlir-llvm
